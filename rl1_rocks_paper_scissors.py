@@ -1,57 +1,71 @@
 import tensorflow as tf
 import numpy as np
 
+#set to 1 to see reward, weights, etc..
+debug = 1
+user_score = 0
+agent_score = 0
 
 #THE BANDITS (the environment)
 
-#Here we define our bandits. For this example we are using a four-armed bandit.
-#The pullBandit function generates a random number from a normal distribution with a mean of 0.
-#The lower the bandit number,the more likely a positive reward will be returned.
-#We want our agent to learn to always choose the bandit that will give that positive reward.
-#Currently bandit 4 (index#3) is set to most often provide a positive reward.
+#This code has been forked from a multi-armed bandit agent
+#The environment has 
 
 #rock = 1, paper = 2, scissors = 3
 bandits = [1,2,3]
 num_bandits = len(bandits)
 def pullBandit(bandit):
 
-    user_action = input("Your turn! (press r for rock, p for paper, or  s for scissors) ")
+    user_action = input("Press r for rock, p for paper, s for scissors, or e to end: ")
 
     if user_action == 'r':
         print('You chose rock')
         if bandit == 1:
             print('Agent chose rock too')
+            print('We have a TIE')
             return 0
         elif bandit == 2:
             print('Agent chose paper')
+            print('You LOSE')
             return 1
         elif bandit == 3:
             print('Agent chose scissors')
+            print('You WIN')
             return -1
         
     elif user_action == 'p':
         print('You chose paper')
         if bandit == 1:
             print('Agent chose rock ')
+            print('You WIN')
             return -1
         elif bandit == 2:
             print('Agent chose paper too')
+            print('We have a TIE')
             return 0
         elif bandit == 3:
             print('Agent chose scissors')
+            print('You LOSE')
             return 1
         
     elif user_action == 's':
         print('You chose scissors')
         if bandit == 1:
             print('Agent chose rock')
+            print('You LOSE')
             return 1
         elif bandit == 2:
             print('Agent chose paper')
+            print('You WIN')
             return -1
         elif bandit == 3:
             print('Agent chose scissors too')
+            print('We have a TIE')
             return 0
+
+    elif user_action == 'e':
+        print('You chose to end the game')
+        return 2
         
     else:
         print('Try again')
@@ -113,16 +127,18 @@ with tf.Session() as sess:
 
     #at this point total reward = [0,0,0,0]
     while i < total_episodes:
-        print ('Episode #:',i+1)
+        print ('Game #',i+1)
         #Choose either a random action or one from our network.
         if np.random.rand(1) < e:
             #random action - a random action 0-3
             action = np.random.randint(num_bandits)
-            print ('Random Action:',str(action))
+            if debug:
+                print ('Random Action:',str(action))
         else:
             #chosen action - the current top pick
             action = sess.run(chosen_action)
-            print ('Chosen Action:',str(action))
+            if debug:
+                print ('Chosen Action:',str(action))
 
 
         #So, reward is either = 1 or -1
@@ -130,14 +146,23 @@ with tf.Session() as sess:
 
 
         #Get our reward from picking one of the bandits.
-        reward = pullBandit(bandits[action]) 
+        reward = pullBandit(bandits[action])
+        if reward == 1:
+            agent_score+=1
+        elif reward == -1:
+            user_score+=1
+        #escape from the loop, end the game
+        elif reward == 2:
+            break
+            
+        print ('Scoreboard: YOU - ',user_score,' AGENT - ',agent_score)
     
-        print ('Reward:',str(reward))
+        if debug:
+            print ('Reward:',str(reward))
        
 
         #Update the network.
         #Remember - AGENT: weights, chosen_action, reward_holder, action_holder, responsible_weight, loss, optimizer, update
-        print ('Updating the network...')
         _,resp,ww = sess.run([update,responsible_weight,weights], feed_dict={reward_holder:[reward],action_holder:[action]})
         
 
@@ -145,19 +170,14 @@ with tf.Session() as sess:
         #Update our running tally of scores.
         total_reward[action] += reward
 
-        #if i % 50 == 0:
-        #   print ('Running reward for the',str(num_bandits),'bandits: ',str(total_reward))
                 
-        print ('Running reward for the',str(num_bandits),'bandits: ',str(total_reward))
-        print('Weights: ',sess.run(weights))
+        if debug:
+            print ('Running reward for the',str(num_bandits),'bandits: ',str(total_reward))
+            print('Weights: ',sess.run(weights))
         print (' ');
         i+=1
 
-print ('The agent thinks bandit ',str(np.argmax(ww)+1),' is the most promising....')
-if np.argmax(ww) == np.argmax(-np.array(bandits)):
-    print ('...and it was right!')
-else:
-    print ('...and it was wrong!')
+
 
 
 
