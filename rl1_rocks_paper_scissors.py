@@ -3,63 +3,67 @@ import numpy as np
 
 #set to 1 to see reward, weights, etc..
 debug = 1
+
 user_score = 0
 agent_score = 0
 
-#THE BANDITS (the environment)
-
-#This code has been forked from a multi-armed bandit agent
-#The environment has 
-
+#THE CHOICES 
 #rock = 1, paper = 2, scissors = 3
-bandits = [1,2,3]
-num_bandits = len(bandits)
-def pullBandit(bandit):
+choices = [1,2,3]
+
+num_choices = len(choices)
+
+print(' ')
+print('Lets play rocks, paper, scissors!')
+print('First one to score 10 wins.')
+print(' ')
+      
+def match(choices):
 
     user_action = input("Press r for rock, p for paper, s for scissors, or e to end: ")
 
     if user_action == 'r':
-        print('You chose rock')
-        if bandit == 1:
-            print('Agent chose rock too')
+        print('You chose ROCK')
+        if choices == 1:
+            print('Agent chose ROCK too')
             print('We have a TIE')
             return 0
-        elif bandit == 2:
-            print('Agent chose paper')
+        elif choices == 2:
+            print('Agent chose PAPER')
             print('You LOSE')
             return 1
-        elif bandit == 3:
-            print('Agent chose scissors')
+        elif choices == 3:
+            print('Agent chose SCISSORS')
             print('You WIN')
             return -1
         
     elif user_action == 'p':
-        print('You chose paper')
-        if bandit == 1:
-            print('Agent chose rock ')
+        print('You chose PAPER')
+        if choices == 1:
+            print('Agent chose ROCK ')
             print('You WIN')
             return -1
-        elif bandit == 2:
-            print('Agent chose paper too')
+        elif choices == 2:
+            print('Agent chose PAPER too')
             print('We have a TIE')
             return 0
-        elif bandit == 3:
-            print('Agent chose scissors')
+        elif choices == 3:
+            print('Agent chose SCISSORS')
             print('You LOSE')
             return 1
         
     elif user_action == 's':
-        print('You chose scissors')
-        if bandit == 1:
-            print('Agent chose rock')
+        print('You chose SCISSORS')
+        if choices == 1:
+            print('Agent chose ROCK')
             print('You LOSE')
             return 1
-        elif bandit == 2:
-            print('Agent chose paper')
+        elif choices == 2:
+            print('Agent chose PAPER')
             print('You WIN')
             return -1
-        elif bandit == 3:
-            print('Agent chose scissors too')
+        elif choices == 3:
+            print('Agent chose SCISSORS too')
             print('We have a TIE')
             return 0
 
@@ -69,25 +73,24 @@ def pullBandit(bandit):
         
     else:
         print('Try again')
+        return 0 
         
 
     #fake breakpoint
-    user_action = input("This is a fake breakpoint. Press enter!")
-    
-    return 1
+    #user_action = input("This is a fake breakpoint. Press enter!")
 
 
 #THE AGENT
 #The code below established our simple neural agent.
-#It consists of a set of values for each of the bandits.
-#Each value is an estimate of the value of the return from choosing the bandit.
+#It consists of a set of values for each of the choices.
+#Each value is an estimate of the value of the return from the various choices.
 #We use a policy gradient method to update the agent by moving the value for the selected action toward the recieved reward.
 
 tf.reset_default_graph()
 
 #These two lines established the feed-forward part of the network. This does the actual choosing.
 
-weights = tf.Variable(tf.ones([num_bandits]))
+weights = tf.Variable(tf.ones([num_choices]))
 chosen_action = tf.argmax(weights,0)
 
 
@@ -112,7 +115,7 @@ update = optimizer.minimize(loss)
 
 #total_episodes = 1000 #Set total number of episodes to train agent on.
 total_episodes = 100 #Set total number of episodes to train agent on.
-total_reward = np.zeros(num_bandits) #Set scoreboard for all four bandits to 0.
+total_reward = np.zeros(num_choices) #Set scoreboard for all four choices to 0.
 e = 0.6 #Set the chance of taking a random action.
 
 
@@ -124,14 +127,17 @@ init = tf.global_variables_initializer()
 with tf.Session() as sess:
     sess.run(init)
     i = 0
+    maxScore = 0
 
     #at this point total reward = [0,0,0,0]
-    while i < total_episodes:
+    while maxScore < 10:
         print ('Game #',i+1)
-        #Choose either a random action or one from our network.
+        i+=1
+        #This is where the agent decides whether to throw rocks, paper or scissors
+        #It chooses either a random action or the one from our network that has the highest weight
         if np.random.rand(1) < e:
-            #random action - a random action 0-3
-            action = np.random.randint(num_bandits)
+            #random action - a random action 0-2
+            action = np.random.randint(num_choices)
             if debug:
                 print ('Random Action:',str(action))
         else:
@@ -141,12 +147,12 @@ with tf.Session() as sess:
                 print ('Chosen Action:',str(action))
 
 
-        #So, reward is either = 1 or -1
-        #Action is either 0,1,2 or 3
+        #So, reward is either = 1, 0, or -1
+        #Action is either 0,1,2 (rocks, paper, scissors)
 
 
-        #Get our reward from picking one of the bandits.
-        reward = pullBandit(bandits[action])
+        #This is where the user enters their action (rocks, paper, or scissors)
+        reward = match(choices[action])
         if reward == 1:
             agent_score+=1
         elif reward == -1:
@@ -154,8 +160,12 @@ with tf.Session() as sess:
         #escape from the loop, end the game
         elif reward == 2:
             break
-            
+
+        print ('   ')
+        print ('*******************************************')
         print ('Scoreboard: YOU - ',user_score,' AGENT - ',agent_score)
+        print ('*******************************************')
+        print ('   ')
     
         if debug:
             print ('Reward:',str(reward))
@@ -172,10 +182,17 @@ with tf.Session() as sess:
 
                 
         if debug:
-            print ('Running reward for the',str(num_bandits),'bandits: ',str(total_reward))
+            print ('Running reward for the',str(num_choices),'choices: ',str(total_reward))
             print('Weights: ',sess.run(weights))
         print (' ');
-        i+=1
+        maxScore = max(user_score,agent_score)
+
+if user_score > agent_score:
+     print('GAME OVER, YOU WIN!')
+else:
+   print('GAME OVER, YOU LOSE!')
+    
+        
 
 
 
