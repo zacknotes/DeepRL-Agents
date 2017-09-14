@@ -1,0 +1,242 @@
+import tensorflow as tf
+import tensorflow.contrib.slim as slim
+import numpy as np
+
+#ACTIONS
+
+class contextual_bandit():
+    def __init__(self):
+        self.state = 0
+
+        #List out our actions
+        
+        self.bandits = np.array([
+
+        #desktop
+
+        #Results count for the first set,
+        [12,16,20,24,28,32,36,40,44,48],
+
+        #Bloomreach results per interest,
+        [40,45,50,55,60,65,70,75,80,85],
+
+        #Baynote recs pulled on each star,
+        [8,9,10,11,12,13,14,15,16,17],
+
+        #Items in set 2,
+        [12,16,20,24,28,32,36,40,44,48],
+
+        #mobile
+
+        #Results count for the first set,
+        [12,16,20,24,28,32,36,40,44,48],
+
+        #Bloomreach results per interest,
+        [40,45,50,55,60,65,70,75,80,85],
+
+        #Baynote recs pulled on each star,
+        [8,9,10,11,12,13,14,15,16,17],
+
+        #Items in set 2,
+        [12,16,20,24,28,32,36,40,44,48]
+
+        ])
+
+        self.bandit_description = [
+            '[D] Results count for the first set',
+            '[D] Bloomreach results per interest',
+            '[D] Baynote recs pulled on each star',
+            '[D] Items in set 2',
+            '[M] Results count for the first set',
+            '[M] Bloomreach results per interest',
+            '[M] Baynote recs pulled on each star',
+            '[M] Items in set 2'
+            ]
+
+
+        self.num_bandits = self.bandits.shape[0]
+        self.num_actions = self.bandits.shape[1]
+        
+    def getState(self):
+        print('   ')
+        #Returns a random state for each episode.
+        #self.state = np.random.randint(0,len(self.bandits))
+        self.state = np.random.randint(0,2)
+        if self.state == 0:
+            print('State is desktop')
+        elif self.state == 1:
+            print('State is mobile')
+        return self.state
+        
+    def pullArm(self,action):
+
+        #The state in this function is baked in to the self object
+        #print('state in pullArm: ',self.state)
+
+        #Action is the index in the array
+        
+        bandit = self.bandits[self.state,action]
+
+        #desktop
+        if self.state==0:          
+            star_useage = 0.2
+
+        #mobile
+        elif self.state==1:
+            star_useage = 0.8
+            
+        #We simulate whether the user starred or not with a randomn number
+        result = np.random.rand(1)
+        
+        if result < star_useage:
+            #return a positive reward.
+            print('User clicked star')
+            return 1
+        else:
+            #return a negative reward.
+            print('User did not click star')
+            return -1
+
+class agent():
+    
+    #lr = learning rate, s_size = state size, a_size = action size
+    def __init__(self, lr, s_size,a_size):
+        
+        #These lines established the feed-forward part of the network. The agent takes a state and produces an action.
+        self.state_in = tf.placeholder(shape=[1],dtype=tf.int32)
+        state_in_OH = slim.one_hot_encoding(self.state_in,s_size)
+        output = slim.fully_connected(state_in_OH,a_size,\
+            biases_initializer=None,activation_fn=tf.nn.sigmoid,weights_initializer=tf.ones_initializer())
+        self.output = tf.reshape(output,[-1])
+        self.chosen_action = tf.argmax(self.output,0)
+
+        #The next six lines establish the training proceedure. We feed the reward and chosen action into the network
+        #to compute the loss, and use it to update the network.
+        self.reward_holder = tf.placeholder(shape=[1],dtype=tf.float32)
+        self.action_holder = tf.placeholder(shape=[1],dtype=tf.int32)
+        self.responsible_weight = tf.slice(self.output,self.action_holder,[1])
+        self.loss = -(tf.log(self.responsible_weight)*self.reward_holder)
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate=lr)
+        self.update = optimizer.minimize(self.loss)
+
+
+#TRAINING THE AGENT
+#We will train our agent by taking actions in our environment, and recieving rewards.
+#Using the rewards and actions, we can know how to properly update our network
+#in order to more often choose actions that will yield the highest rewards over time.
+
+
+tf.reset_default_graph() #Clear the Tensorflow graph.
+
+cBandit = contextual_bandit() #Load the bandits.
+
+#Load the agent.
+myAgent = agent(lr=0.001,s_size=cBandit.num_bandits,a_size=cBandit.num_actions)
+print('state size',cBandit.num_bandits)
+print('action size',cBandit.num_actions)
+
+
+#The weights we will evaluate to look into the network.
+weights = tf.trainable_variables()[0] 
+
+
+#fake breakpoint
+user_action = input("Let's make an elephantBot. Press enter!")
+
+total_episodes = 100 #Set total number of episodes to train agent on.
+total_reward = np.zeros([cBandit.num_bandits,cBandit.num_actions]) #Set scoreboard for bandits to 0.
+e = 0.9 #Set the chance of taking a random action.
+
+#init = tf.initialize_all_variables()
+init = tf.global_variables_initializer()
+
+# Launch the tensorflow graph
+with tf.Session() as sess:
+    sess.run(init)
+    i = 0
+    
+    #need to clean this up a bit
+    action=[0,0,0,0,0,0,0,0]
+    
+    for i in range(total_episodes):
+        #Get a state for the environment.
+        s = cBandit.getState()
+
+        #cycles through #0-3 if desktop (0) and #4-7 if mobile (1)
+        
+        for j in range(4*s,cBandit.num_bandits - (4*(1-s))):
+
+            print('j = ',j)
+        
+            #Choose either a random action or one from our network.
+            if np.random.rand(1) < e:
+                #random action - this is the index into the array
+                action[j] = np.random.randint(cBandit.num_actions)
+                print('Random Action',str(action))
+            else:
+                #chosen action
+                action[j] = sess.run(myAgent.chosen_action,feed_dict={myAgent.state_in:[j]})
+                print('Chosen Action',str(action))
+        
+        #Get our reward for taking an action given a bandit.
+        reward = cBandit.pullArm(action)
+
+        
+        #Update the network.
+        
+        for j in range(4*s,cBandit.num_bandits - (4*(1-s))):
+            
+            #feed_dict={myAgent.reward_holder:[reward],myAgent.action_holder:[action],myAgent.state_in:[s]}
+            #_,ww = sess.run([myAgent.update,weights], feed_dict=feed_dict)
+
+            feed_dict={myAgent.reward_holder:[reward],myAgent.action_holder:[action[j]],myAgent.state_in:[j]}
+            _,ww = sess.run([myAgent.update,weights], feed_dict=feed_dict)
+        
+            #Update our running tally of scores.
+            total_reward[j,action[j]] += reward
+            
+        #if i % 100 == 0:
+        #print ('Mean reward for each of the',str(cBandit.num_bandits),' bandits: ',str(np.mean(total_reward,axis=1)))
+        #print('Weights: ',sess.run(weights))
+        #print ('Reward',str(total_reward))
+        
+	
+        #for bandit in range(cBandit.num_bandits):
+        #    print("~~  {}  ~~".format(bandit))
+        #    print("Bandit {} with mean reward {}".format(bandit, np.mean(total_reward,axis=1)[bandit]))
+        #    print("total_reward, weights")
+        #    print(np.array(
+        #            [total_reward[bandit],
+        #            sess.run(weights)[bandit]
+        #            ]).T
+        #        )
+         
+            
+        #i+=1
+        #print_np = np.array
+       
+#print('Still trying to print the stupid array' ,print_np)
+
+
+for bandit_index in range(int(cBandit.num_bandits / 2)):
+    print ('On desktop, the agent thinks action',str(np.argmax(ww[bandit_index])+1),' for bandit',str(bandit_index+1),' is the most promising....')
+
+
+    best_action_index = ww[bandit_index].argmax()
+    print("{}:\t{}".format(
+        cBandit.bandit_description[bandit_index],
+        cBandit.bandits[bandit_index][best_action_index]
+         )
+    )
+    #print(cBandit.bandits[bandit_index][best_action_index])
+        
+
+for bandit_index in range(int(cBandit.num_bandits / 2), cBandit.num_bandits):
+    print ('On mobile, the agent thinks action',str(np.argmax(ww[bandit_index])+1),' for bandit',str(bandit_index+1),' is the most promising....')
+
+    best_action_index = ww[bandit_index].argmax()
+    print("{}:\t{}".format(
+        cBandit.bandit_description[bandit_index],
+        cBandit.bandits[bandit_index][best_action_index]
+         )
+    )
