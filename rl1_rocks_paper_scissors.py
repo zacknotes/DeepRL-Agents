@@ -20,7 +20,7 @@ print(' ')
       
 def match(choices):
 
-    user_action = input("Press r for rock, p for paper, s for scissors, or e to end: ")
+    user_action = input("Enter r for rock, p for paper, s for scissors, or e to end: ")
 
     if user_action == 'r':
         print('You chose ROCK')
