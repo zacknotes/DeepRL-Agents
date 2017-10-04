@@ -58,6 +58,8 @@ class contextual_bandit():
         self.num_actions = self.bandits.shape[1]
         
     def getState(self):
+        #IRL this would read the user's device type
+        
         print('   ')
         #Returns a random state for each episode.
         #self.state = np.random.randint(0,len(self.bandits))
@@ -69,6 +71,8 @@ class contextual_bandit():
         return self.state
         
     def pullArm(self,action):
+        #IRL this would run on every sunny session. The reward would either be 
+
 
         #The state in this function is baked in to the self object
         #print('state in pullArm: ',self.state)
@@ -86,9 +90,11 @@ class contextual_bandit():
             star_useage = 0.8
             
         #We simulate whether the user starred or not with a randomn number
-        result = np.random.rand(1)
-        
-        if result < star_useage:
+        random_result = np.random.rand(1)
+
+
+        #IRL we would see if the user starred or not
+        if random_result < star_useage:
             #return a positive reward.
             print('User clicked star')
             return 1
@@ -139,16 +145,15 @@ print('action size',cBandit.num_actions)
 #The weights we will evaluate to look into the network.
 weights = tf.trainable_variables()[0] 
 
-
-#fake breakpoint
-user_action = input("Let's make an elephantBot. Press enter!")
-
 total_episodes = 100 #Set total number of episodes to train agent on.
 total_reward = np.zeros([cBandit.num_bandits,cBandit.num_actions]) #Set scoreboard for bandits to 0.
 e = 0.9 #Set the chance of taking a random action.
 
 #init = tf.initialize_all_variables()
 init = tf.global_variables_initializer()
+
+
+#####MAIN######
 
 # Launch the tensorflow graph
 with tf.Session() as sess:
@@ -157,22 +162,29 @@ with tf.Session() as sess:
     
     #need to clean this up a bit
     action=[0,0,0,0,0,0,0,0]
+
+    
     
     for i in range(total_episodes):
+
         #Get a state for the environment.
         s = cBandit.getState()
 
-        #cycles through #0-3 if desktop (0) and #4-7 if mobile (1)
+        #cycles through actions #0-3 if desktop (0)and actions #4-7 if mobile (1)
         
         for j in range(4*s,cBandit.num_bandits - (4*(1-s))):
 
             print('j = ',j)
         
-            #Choose either a random action or one from our network.
+            #Choose either a random action or one from our network of weights
+
+            
+
             if np.random.rand(1) < e:
                 #random action - this is the index into the array
                 action[j] = np.random.randint(cBandit.num_actions)
                 print('Random Action',str(action))
+                
             else:
                 #chosen action
                 action[j] = sess.run(myAgent.chosen_action,feed_dict={myAgent.state_in:[j]})
@@ -183,7 +195,6 @@ with tf.Session() as sess:
 
         
         #Update the network.
-        
         for j in range(4*s,cBandit.num_bandits - (4*(1-s))):
             
             #feed_dict={myAgent.reward_holder:[reward],myAgent.action_holder:[action],myAgent.state_in:[s]}
@@ -195,10 +206,18 @@ with tf.Session() as sess:
             #Update our running tally of scores.
             total_reward[j,action[j]] += reward
             
-        #if i % 100 == 0:
-        #print ('Mean reward for each of the',str(cBandit.num_bandits),' bandits: ',str(np.mean(total_reward,axis=1)))
-        #print('Weights: ',sess.run(weights))
-        #print ('Reward',str(total_reward))
+
+        
+
+        if i == 99:
+            #fake breakpoint
+            user_action = input("Wanna see the weights? Press enter!")
+            print ('Mean reward for each of the',str(cBandit.num_bandits),' bandits: ',str(np.mean(total_reward,axis=1)))
+            print('Weights: ',sess.run(weights))
+            #print ('Reward',str(total_reward))
+    
+       
+
         
 	
         #for bandit in range(cBandit.num_bandits):
@@ -215,7 +234,7 @@ with tf.Session() as sess:
         #i+=1
         #print_np = np.array
        
-#print('Still trying to print the stupid array' ,print_np)
+
 
 
 for bandit_index in range(int(cBandit.num_bandits / 2)):
@@ -240,3 +259,5 @@ for bandit_index in range(int(cBandit.num_bandits / 2), cBandit.num_bandits):
         cBandit.bandits[bandit_index][best_action_index]
          )
     )
+
+
