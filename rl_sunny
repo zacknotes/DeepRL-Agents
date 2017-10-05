@@ -2,10 +2,16 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import numpy as np
 
+
+
+
+
+
 #ACTIONS
 
 class contextual_bandit():
     def __init__(self):
+
         self.state = 0
 
         #List out our actions
@@ -126,6 +132,8 @@ class agent():
         self.update = optimizer.minimize(self.loss)
 
 
+
+
 #TRAINING THE AGENT
 #We will train our agent by taking actions in our environment, and recieving rewards.
 #Using the rewards and actions, we can know how to properly update our network
@@ -138,8 +146,8 @@ cBandit = contextual_bandit() #Load the bandits.
 
 #Load the agent.
 myAgent = agent(lr=0.001,s_size=cBandit.num_bandits,a_size=cBandit.num_actions)
-print('state size',cBandit.num_bandits)
-print('action size',cBandit.num_actions)
+print('Waking up the elephant...',cBandit.num_bandits)
+
 
 
 #The weights we will evaluate to look into the network.
@@ -153,17 +161,27 @@ e = 0.9 #Set the chance of taking a random action.
 init = tf.global_variables_initializer()
 
 
+
+
+
+
 #####MAIN######
 
 # Launch the tensorflow graph
 with tf.Session() as sess:
     sess.run(init)
+
+    #Create a saver object which will save all the variables
+    saver = tf.train.Saver()
+
     i = 0
     
     #need to clean this up a bit
     action=[0,0,0,0,0,0,0,0]
 
-    
+    print('Initial Weights: ',sess.run(weights))
+    #fake breakpoint
+    user_action = input("Finished reviewing the weights? Press enter!")
     
     for i in range(total_episodes):
 
@@ -211,15 +229,10 @@ with tf.Session() as sess:
 
         if i == 99:
             #fake breakpoint
-            user_action = input("Wanna see the weights? Press enter!")
+            user_action = input("Wanna see the weights now? Press enter!")
             print ('Mean reward for each of the',str(cBandit.num_bandits),' bandits: ',str(np.mean(total_reward,axis=1)))
             print('Weights: ',sess.run(weights))
-            #print ('Reward',str(total_reward))
-    
-       
 
-        
-	
         #for bandit in range(cBandit.num_bandits):
         #    print("~~  {}  ~~".format(bandit))
         #    print("Bandit {} with mean reward {}".format(bandit, np.mean(total_reward,axis=1)[bandit]))
@@ -233,8 +246,14 @@ with tf.Session() as sess:
             
         #i+=1
         #print_np = np.array
-       
 
+
+    #fake breakpoint
+    user_action = input("Done reviewing the weights? Press enter and I'll save the weights")
+            
+    #Now, save the graph
+    saver.save(sess, "/tmp/my-model")
+    #print ('Reward',str(total_reward))
 
 
 for bandit_index in range(int(cBandit.num_bandits / 2)):
@@ -259,5 +278,6 @@ for bandit_index in range(int(cBandit.num_bandits / 2), cBandit.num_bandits):
         cBandit.bandits[bandit_index][best_action_index]
          )
     )
+
 
 
