@@ -2,11 +2,6 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import numpy as np
 
-
-
-
-
-
 #ACTIONS
 
 class contextual_bandit():
