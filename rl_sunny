@@ -169,7 +169,7 @@ with tf.Session() as sess:
     #Create a saver object which will save all the variables
     saver = tf.train.Saver()
 
-
+    #Comment this out on first run
     saver.restore(sess, "/tmp/my-model")
 
     i = 0
