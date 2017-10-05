@@ -127,8 +127,6 @@ class agent():
         self.update = optimizer.minimize(self.loss)
 
 
-
-
 #TRAINING THE AGENT
 #We will train our agent by taking actions in our environment, and recieving rewards.
 #Using the rewards and actions, we can know how to properly update our network
@@ -143,8 +141,6 @@ cBandit = contextual_bandit() #Load the bandits.
 myAgent = agent(lr=0.001,s_size=cBandit.num_bandits,a_size=cBandit.num_actions)
 print('Waking up the elephant...',cBandit.num_bandits)
 
-
-
 #The weights we will evaluate to look into the network.
 weights = tf.trainable_variables()[0] 
 
@@ -154,10 +150,6 @@ e = 0.9 #Set the chance of taking a random action.
 
 #init = tf.initialize_all_variables()
 init = tf.global_variables_initializer()
-
-
-
-
 
 
 #####MAIN######
@@ -186,15 +178,13 @@ with tf.Session() as sess:
         #Get a state for the environment.
         s = cBandit.getState()
 
-        #cycles through actions #0-3 if desktop (0)and actions #4-7 if mobile (1)
+        #cycles through actions #0-3 if desktop 0)and actions #4-7 if mobile (1)
         
         for j in range(4*s,cBandit.num_bandits - (4*(1-s))):
 
             print('j = ',j)
         
             #Choose either a random action or one from our network of weights
-
-            
 
             if np.random.rand(1) < e:
                 #random action - this is the index into the array
@@ -209,12 +199,8 @@ with tf.Session() as sess:
         #Get our reward for taking an action given a bandit.
         reward = cBandit.pullArm(action)
 
-        
         #Update the network.
         for j in range(4*s,cBandit.num_bandits - (4*(1-s))):
-            
-            #feed_dict={myAgent.reward_holder:[reward],myAgent.action_holder:[action],myAgent.state_in:[s]}
-            #_,ww = sess.run([myAgent.update,weights], feed_dict=feed_dict)
 
             feed_dict={myAgent.reward_holder:[reward],myAgent.action_holder:[action[j]],myAgent.state_in:[j]}
             _,ww = sess.run([myAgent.update,weights], feed_dict=feed_dict)
@@ -223,27 +209,10 @@ with tf.Session() as sess:
             total_reward[j,action[j]] += reward
             
 
-        
-
-        if i == 99:
-            #fake breakpoint
-            user_action = input("Wanna see the weights now? Press enter!")
-            print ('Mean reward for each of the',str(cBandit.num_bandits),' bandits: ',str(np.mean(total_reward,axis=1)))
-            print('Weights: ',sess.run(weights))
-
-        #for bandit in range(cBandit.num_bandits):
-        #    print("~~  {}  ~~".format(bandit))
-        #    print("Bandit {} with mean reward {}".format(bandit, np.mean(total_reward,axis=1)[bandit]))
-        #    print("total_reward, weights")
-        #    print(np.array(
-        #            [total_reward[bandit],
-        #            sess.run(weights)[bandit]
-        #            ]).T
-        #        )
-         
-            
-        #i+=1
-        #print_np = np.array
+    #fake breakpoint
+    user_action = input("Wanna see the weights now? Press enter!")
+    print ('Mean reward for each of the',str(cBandit.num_bandits),' bandits: ',str(np.mean(total_reward,axis=1)))
+    print('Weights: ',sess.run(weights))
 
 
     #fake breakpoint
@@ -264,7 +233,6 @@ for bandit_index in range(int(cBandit.num_bandits / 2)):
         cBandit.bandits[bandit_index][best_action_index]
          )
     )
-    #print(cBandit.bandits[bandit_index][best_action_index])
         
 
 for bandit_index in range(int(cBandit.num_bandits / 2), cBandit.num_bandits):
@@ -276,6 +244,5 @@ for bandit_index in range(int(cBandit.num_bandits / 2), cBandit.num_bandits):
         cBandit.bandits[bandit_index][best_action_index]
          )
     )
-
 
 
