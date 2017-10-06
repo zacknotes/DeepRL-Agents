@@ -123,8 +123,24 @@ class agent():
         self.action_holder = tf.placeholder(shape=[1],dtype=tf.int32)
         self.responsible_weight = tf.slice(self.output,self.action_holder,[1])
         self.loss = -(tf.log(self.responsible_weight)*self.reward_holder)
+
+        #these were needed to run experience traces
+        tvars = tf.trainable_variables()
+        self.gradient_holders = []
+        for idx,var in enumerate(tvars):
+            placeholder = tf.placeholder(tf.float32,name=str(idx)+'_holder')
+            self.gradient_holders.append(placeholder)
+
+        self.gradients = tf.gradients(self.loss,tvars)
+        
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=lr)
-        self.update = optimizer.minimize(self.loss)
+
+        #here is how we updated before using experience traces
+        #self.update = optimizer.minimize(self.loss)
+        
+        #this is where we tell agent to update with experience traces
+        self.update_batch = optimizer.apply_gradients(zip(self.gradient_holders,tvars))
+
 
 
 #TRAINING THE AGENT
@@ -147,6 +163,7 @@ weights = tf.trainable_variables()[0]
 total_episodes = 100 #Set total number of episodes to train agent on.
 total_reward = np.zeros([cBandit.num_bandits,cBandit.num_actions]) #Set scoreboard for bandits to 0.
 e = 0.9 #Set the chance of taking a random action.
+update_frequency = 5 #This is how often we update with experience traces        
 
 #init = tf.initialize_all_variables()
 init = tf.global_variables_initializer()
@@ -172,14 +189,19 @@ with tf.Session() as sess:
     print('Initial Weights: ',sess.run(weights))
     #fake breakpoint
     user_action = input("Finished reviewing the weights? Press enter!")
-    
+
+    #This is where we initialize the buffer for experience traces
+    gradBuffer = sess.run(tf.trainable_variables())
+    for ix,grad in enumerate(gradBuffer):
+        gradBuffer[ix] = grad * 0
+
+    #Each 'episode' is another Sunny Session
     for i in range(total_episodes):
 
         #Get a state for the environment.
         s = cBandit.getState()
 
-        #cycles through actions #0-3 if desktop 0)and actions #4-7 if mobile (1)
-        
+        #cycles through actions #0-3 if desktop (0)and actions #4-7 if mobile (1)
         for j in range(4*s,cBandit.num_bandits - (4*(1-s))):
 
             print('j = ',j)
@@ -199,11 +221,31 @@ with tf.Session() as sess:
         #Get our reward for taking an action given a bandit.
         reward = cBandit.pullArm(action)
 
-        #Update the network.
+
+        #We want to update so that we don't do this after every sunny session (episode)
+        #Instead we want to save to a buffer and run experience traces
+        
+        #Update the network
+        #cycles through updates on actions #0-3 if desktop (s=0)and actions #4-7 if mobile (s=1)
         for j in range(4*s,cBandit.num_bandits - (4*(1-s))):
 
             feed_dict={myAgent.reward_holder:[reward],myAgent.action_holder:[action[j]],myAgent.state_in:[j]}
-            _,ww = sess.run([myAgent.update,weights], feed_dict=feed_dict)
+
+            #this is the line we had before we implemented experience traces
+            #_,ww = sess.run([myAgent.update,weights], feed_dict=feed_dict)
+
+            #experience trace updates
+            grads = sess.run(myAgent.gradients, feed_dict=feed_dict)
+            for idx,grad in enumerate(grads):
+                gradBuffer[idx] += grad
+
+            if i % update_frequency == 0 and i != 0:
+                print('updating weights with experience trace. Action = ',j)
+                feed_dict= dictionary = dict(zip(myAgent.gradient_holders, gradBuffer))
+                _ = sess.run(myAgent.update_batch, feed_dict=feed_dict)
+                
+                for ix,grad in enumerate(gradBuffer):
+                    gradBuffer[ix] = grad * 0
         
             #Update our running tally of scores.
             total_reward[j,action[j]] += reward
