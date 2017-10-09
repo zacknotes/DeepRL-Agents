@@ -266,6 +266,11 @@ with tf.Session() as sess:
     saver.save(sess, "/tmp/my-model")
     #print ('Reward',str(total_reward))
 
+    # to pull the weights into an np array
+    # I'm using the TF session here and saving them as ww
+    # ww was the variable name I used in a previous version of the code
+    ww = sess.run(weights)
+
 
 for bandit_index in range(int(cBandit.num_bandits / 2)):
     print ('On desktop, the agent thinks action',str(np.argmax(ww[bandit_index])+1),' for bandit',str(bandit_index+1),' is the most promising....')
@@ -273,9 +278,9 @@ for bandit_index in range(int(cBandit.num_bandits / 2)):
 
     best_action_index = ww[bandit_index].argmax()
     print("{}:\t{}".format(
-        cBandit.bandit_description[bandit_index],
-        cBandit.bandits[bandit_index][best_action_index]
-         )
+    cBandit.bandit_description[bandit_index],
+    cBandit.bandits[bandit_index][best_action_index]
+     )
     )
 
 
@@ -284,7 +289,8 @@ for bandit_index in range(int(cBandit.num_bandits / 2), cBandit.num_bandits):
 
     best_action_index = ww[bandit_index].argmax()
     print("{}:\t{}".format(
-        cBandit.bandit_description[bandit_index],
-        cBandit.bandits[bandit_index][best_action_index]
-         )
+    cBandit.bandit_description[bandit_index],
+    cBandit.bandits[bandit_index][best_action_index]
+     )
     )
+
